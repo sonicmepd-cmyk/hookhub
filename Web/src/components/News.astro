@@ -1,0 +1,196 @@
+---
+import { site } from '../config/site';
+
+const { news } = site;
+
+/** Formatea una fecha ISO a formato largo en español */
+function formatDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+}
+---
+
+<section class="news" id="novedades">
+  <div class="container">
+    <header class="section-header" data-reveal>
+      <p class="section-eyebrow">Novedades</p>
+      <h2>Versiones y publicaciones</h2>
+      <p class="section-lead">
+        Aquí se recogerán los cambios de cada versión publicada de HookHub.
+      </p>
+    </header>
+
+    {
+      news.length === 0 ? (
+        <div class="news-empty" role="status" data-reveal>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 4h16v16H4z" />
+            <path d="M8 9h8M8 13h5" />
+          </svg>
+          <p>
+            <strong>Aún no hay novedades publicadas.</strong> Las notas de versión aparecerán
+            aquí en cuanto se publique la primera release de HookHub.
+          </p>
+        </div>
+      ) : (
+        <ol class="news-list">
+          {news.map((entry) => (
+            <li class="news-item">
+              <div class="news-meta">
+                <time datetime={entry.date}>{formatDate(entry.date)}</time>
+                {entry.url && (
+                  <a
+                    href={entry.url}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    class="news-link"
+                  >
+                    Ver publicación original
+                    <span class="sr-only"> (abre en una pestaña nueva)</span>
+                  </a>
+                )}
+              </div>
+              <h3>{entry.title}</h3>
+              <p class="news-summary">{entry.summary}</p>
+              {entry.changes.length > 0 && (
+                <ul class="news-changes">
+                  {entry.changes.map((change) => (
+                    <li>{change}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ol>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .news {
+    padding: var(--space-9) 0;
+    background: var(--color-bg-soft);
+    border-block: 1px solid var(--color-border);
+  }
+
+  .section-header {
+    max-width: 40rem;
+    margin-bottom: var(--space-6);
+  }
+
+  .section-eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-3);
+  }
+
+  h2 {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--space-4);
+  }
+
+  .section-lead {
+    color: var(--color-text-muted);
+    font-size: var(--text-lg);
+  }
+
+  .news-empty {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-4) var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+    max-width: 46rem;
+  }
+
+  .news-empty svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--color-text-muted);
+  }
+
+  .news-empty strong {
+    color: var(--color-text);
+  }
+
+  .news-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 46rem;
+  }
+
+  .news-item {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+  }
+
+  .news-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .news-link {
+    font-weight: 500;
+  }
+
+  .news-item h3 {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-2);
+  }
+
+  .news-summary {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-3);
+  }
+
+  .news-changes {
+    padding-left: 1.25rem;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  @media (max-width: 40rem) {
+    .news {
+      padding: var(--space-8) 0;
+    }
+  }
+</style>

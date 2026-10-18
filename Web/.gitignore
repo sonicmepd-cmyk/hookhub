@@ -1,0 +1,21 @@
+# Dependencias
+node_modules/
+
+# Compilación
+dist/
+.astro/
+
+# Base de datos de cuentas
+data/
+
+# Registros
+npm-debug.log*
+*.log
+
+# Entorno
+.env
+.env.*
+
+# Editores
+.vscode/
+.idea/

@@ -1,0 +1,14 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Navbar from '../components/ui/navbar-02';
+import Footer from '../components/Footer.astro';
+import NotFound from '../components/ui/not-found-02';
+---
+
+<BaseLayout title="Página no encontrada" description="La página solicitada no existe.">
+  <Navbar client:load />
+  <main id="contenido">
+    <NotFound />
+  </main>
+  <Footer />
+</BaseLayout>

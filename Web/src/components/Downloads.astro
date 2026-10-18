@@ -1,0 +1,306 @@
+---
+import StatusBadge from './StatusBadge.astro';
+import { site } from '../config/site';
+
+const { platforms } = site;
+const anyAvailable = platforms.some((p) => p.status === 'available');
+---
+
+<section class="downloads" id="descargas">
+  <div class="container">
+    <header class="section-header" data-reveal>
+      <p class="section-eyebrow">Descargas</p>
+      <h2>Obtén HookHub</h2>
+      <p class="section-lead">
+        Cuando se publique la primera versión, el instalador oficial aparecerá aquí. Cada
+        plataforma indica su estado real.
+      </p>
+    </header>
+
+    {
+      !anyAvailable && (
+        <div class="downloads-empty" role="status" data-reveal>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4" />
+            <path d="M12 16h.01" />
+          </svg>
+          <p>
+            <strong>Aún no hay versiones publicadas.</strong> HookHub está en desarrollo; los
+            instaladores se enlazarán aquí mediante GitHub Releases en cuanto salga la primera
+            versión.
+          </p>
+        </div>
+      )
+    }
+
+    <ul class="platforms-grid">
+      {
+        platforms.map((platform, index) => (
+          <li class="platform-card" data-reveal style={`--reveal-i: ${index}`}>
+            <div class="platform-top">
+              <div class="platform-icon" aria-hidden="true">
+                {platform.icon === 'windows' && (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 5.5 10.5 4.4v7.1H3V5.5zM11.7 4.2 21 3v8.5h-9.3V4.2zM3 12.5h7.5v7.1L3 18.5v-6zM11.7 12.5H21V21l-9.3-1.3v-7.2z" />
+                  </svg>
+                )}
+                {platform.icon === 'android' && (
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M5 10h14v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-8z" />
+                    <path d="M7 10a5 5 0 0 1 10 0" />
+                    <path d="M8.5 6.5 7 4M15.5 6.5 17 4" />
+                    <circle cx="9" cy="13.5" r="0.5" fill="currentColor" />
+                    <circle cx="15" cy="13.5" r="0.5" fill="currentColor" />
+                  </svg>
+                )}
+                {platform.icon === 'future' && (
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v8M8 12h8" />
+                  </svg>
+                )}
+              </div>
+              <StatusBadge status={platform.status} />
+            </div>
+            <h3>{platform.name}</h3>
+            <p class="platform-desc">{platform.description}</p>
+            {platform.note && <p class="platform-note">{platform.note}</p>}
+
+            {platform.status === 'available' && platform.url ? (
+              <a
+                class="btn btn-primary"
+                href={platform.url}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Descargar para {platform.name}
+                {platform.version && <span class="btn-version">v{platform.version}</span>}
+              </a>
+            ) : (
+              <button
+                type="button"
+                class="btn btn-unavailable"
+                aria-disabled="true"
+                aria-describedby={`note-${platform.id}`}
+              >
+                {platform.status === 'in_development' ? 'En preparación' : 'Próximamente'}
+              </button>
+            )}
+            <p class="sr-only" id={`note-${platform.id}`}>
+              {platform.name}: descarga no disponible todavía. {platform.note}
+            </p>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .downloads {
+    padding: var(--space-9) 0;
+    background: var(--color-bg);
+  }
+
+  .section-header {
+    max-width: 40rem;
+    margin-bottom: var(--space-6);
+  }
+
+  .section-eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: var(--space-3);
+  }
+
+  h2 {
+    font-size: var(--text-3xl);
+    margin-bottom: var(--space-4);
+  }
+
+  .section-lead {
+    color: var(--color-text-muted);
+    font-size: var(--text-lg);
+  }
+
+  .downloads-empty {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-soft);
+    color: var(--color-text-muted);
+    max-width: 46rem;
+  }
+
+  .downloads-empty svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--color-warning);
+  }
+
+  .downloads-empty strong {
+    color: var(--color-text);
+  }
+
+  .platforms-grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+  }
+
+  .platform-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg);
+    transition:
+      border-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      translate var(--transition-base);
+  }
+
+  .platform-card:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+    box-shadow: var(--shadow-md);
+    translate: 0 -4px;
+  }
+
+  .platform-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .platform-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-soft);
+    color: var(--color-text);
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+  }
+
+  .platform-desc {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .platform-note {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-top: auto;
+    padding-top: var(--space-2);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: 0.625rem 1.125rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    text-decoration: none;
+    min-height: 2.75rem;
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      border-color var(--transition-fast),
+      color var(--transition-fast);
+  }
+
+  .btn-primary {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-accent-strong);
+  }
+
+  .btn-version {
+    font-size: var(--text-xs);
+    opacity: 0.85;
+  }
+
+  .btn-unavailable {
+    color: var(--color-text-muted);
+    background: var(--color-bg-soft);
+    border: 1px dashed var(--color-border);
+    cursor: default;
+  }
+
+  .btn-unavailable:hover {
+    color: var(--color-text-muted);
+    background: var(--color-bg-soft);
+    border-color: var(--color-border);
+  }
+
+  @media (max-width: 60rem) {
+    .platforms-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .downloads {
+      padding: var(--space-8) 0;
+    }
+
+    .platforms-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

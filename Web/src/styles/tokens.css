@@ -1,0 +1,69 @@
+/* ============================================================
+   HookHub — Tokens de diseño
+   Identidad: minimal-editorial, sin gradientes, bordes finos.
+   ============================================================ */
+
+:root {
+  /* Paleta */
+  --color-bg: #ffffff;
+  --color-bg-soft: #f7f7f5;
+  --color-text: #171717;
+  /* Oscurecido desde el #737373 original de la identidad para cumplir
+     contraste WCAG AA 4.5:1 también sobre el fondo secundario #F7F7F5
+     (con #737373 el ratio era 4.42:1). Con #6A6A6A: 5.41:1 sobre blanco,
+     5.04:1 sobre #F7F7F5. */
+  --color-text-muted: #6a6a6a;
+  --color-border: #e5e5e5;
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-positive: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+  --color-on-accent: #ffffff;
+
+  /* Tipografía */
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Space Grotesk', var(--font-body);
+
+  --text-xs: 0.8125rem; /* 13px */
+  --text-sm: 0.875rem; /* 14px */
+  --text-base: 1rem; /* 16px */
+  --text-lg: 1.125rem; /* 18px */
+  --text-xl: 1.375rem; /* 22px */
+  --text-2xl: 1.75rem; /* 28px */
+  --text-3xl: clamp(1.75rem, 1.2rem + 2.2vw, 2.25rem); /* 28–36px */
+  --text-4xl: clamp(2.25rem, 1.5rem + 3.4vw, 3.25rem); /* 36–52px */
+
+  /* Espaciado (base 4px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --space-9: 6rem;
+  --space-10: 8rem;
+
+  /* Radios */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Sombras discretas */
+  --shadow-sm: 0 1px 2px rgba(23, 23, 23, 0.06);
+  --shadow-md: 0 4px 14px rgba(23, 23, 23, 0.08);
+
+  /* Movimiento */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --transition-fast: 150ms var(--ease-out);
+  --transition-base: 220ms var(--ease-out);
+
+  /* Layout */
+  --container: 70rem; /* 1120px */
+  --header-height: 4rem;
+
+  /* Anillo de foco */
+  --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
+}

@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Navbar from '../components/ui/navbar-02';
+import Footer from '../components/Footer.astro';
+import AuthSection from '../components/ui/auth-section';
+---
+
+<BaseLayout title="Iniciar sesión">
+  <Navbar client:load />
+  <main id="contenido" class="auth-page">
+    <div class="container auth-inner">
+      <header class="auth-header">
+        <p class="auth-badge">Cuenta con verificación</p>
+        <h1>Tu cuenta en HookHub</h1>
+        <p class="auth-lead">
+          Crea tu cuenta con un nombre de usuario y tu correo. Te enviaremos un código de
+          verificación para confirmar que el correo es tuyo antes de entrar.
+        </p>
+      </header>
+
+      <div class="auth-card">
+        <AuthSection client:load />
+      </div>
+
+      <p class="auth-foot">
+        ¿Solo echas un vistazo?
+        <a href="/">Volver a la portada</a>
+      </p>
+    </div>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+  .auth-page {
+    padding: var(--space-8) 0 var(--space-9);
+    background-color: var(--color-bg-soft);
+    /* Misma textura de puntos que el hero */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Ccircle cx='2' cy='2' r='1.1' fill='%23171717' fill-opacity='0.07'/%3E%3C/svg%3E");
+    min-height: calc(100vh - var(--header-height));
+  }
+
+  .auth-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .auth-header {
+    text-align: center;
+    max-width: 34rem;
+    margin-bottom: var(--space-6);
+  }
+
+  .auth-badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border: 1px dashed var(--color-border);
+    border-radius: 999px;
+    padding: 0.25rem 0.75rem;
+    margin-bottom: var(--space-4);
+    background: var(--color-bg);
+  }
+
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-3);
+  }
+
+  .auth-lead {
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
+  }
+
+  .auth-card {
+    width: min(100%, 24rem);
+    animation: card-in 520ms var(--ease-out) both;
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      translate: 0 14px;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  .auth-foot {
+    margin-top: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .auth-foot a {
+    font-weight: 500;
+  }
+</style>

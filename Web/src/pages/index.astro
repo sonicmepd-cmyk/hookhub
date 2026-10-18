@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Navbar from '../components/ui/navbar-02';
+import AgencyHeroSection from '../components/ui/hero-01';
+import FeaturesCard from '../components/ui/features-card';
+import Downloads from '../components/Downloads.astro';
+import News from '../components/News.astro';
+import Community from '../components/Community.astro';
+import Footer from '../components/Footer.astro';
+import AnimatedMarqueeHero from '../components/ui/hero-3';
+
+const showcaseImages = [
+  '/showcase/showcase-1.png',
+  '/showcase/showcase-2.png',
+  '/showcase/showcase-3.png',
+  '/showcase/showcase-4.png',
+  '/showcase/showcase-5.png',
+  '/showcase/showcase-6.png',
+  '/showcase/showcase-7.png',
+  '/showcase/showcase-8.png',
+];
+---
+
+<BaseLayout>
+  <Navbar client:load />
+  <main id="contenido">
+    <AgencyHeroSection />
+    <FeaturesCard client:visible />
+    <Downloads />
+    <News />
+    <Community />
+    <AnimatedMarqueeHero
+      client:visible
+      tagline="Hecho para creadores de contenido"
+      title="Empieza a planificar tu contenido"
+      description="Analiza, desarrolla ideas y organiza tu estrategia con herramientas inteligentes pensadas para creadores."
+      ctaText="Descargar HookHub"
+      ctaHref="#descargas"
+      images={showcaseImages}
+      className="h-[90vh] min-h-[640px] bg-soft"
+    />
+  </main>
+  <Footer />
+</BaseLayout>

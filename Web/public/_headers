@@ -1,0 +1,12 @@
+# Cabeceras de seguridad — HookHub Web
+# Compatible con Netlify y Cloudflare Pages.
+# IMPORTANTE: GitHub Pages NO aplica este archivo. Las cabeceras solo
+# estarán activas cuando el sitio se despliegue en un proveedor que las soporte.
+# Verificar tras el despliegue con: curl -I https://<dominio>/
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Content-Security-Policy: default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; style-src 'self'; script-src 'self'; font-src 'self'; connect-src 'self'

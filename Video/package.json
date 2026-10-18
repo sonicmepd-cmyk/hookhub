@@ -1,0 +1,25 @@
+{
+  "name": "hookhub-promo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Anuncio promocional de HookHub — Remotion, 1920x1080, 30 fps",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Promo out/video.mp4 --codec h264 --crf 17",
+    "still": "remotion still src/index.ts Promo out/check.png",
+    "audio": "node scripts/make-audio.mjs",
+    "vo": "node scripts/make-vo.mjs",
+    "build": "npm run audio && npm run vo && npm run render"
+  },
+  "dependencies": {
+    "@remotion/google-fonts": "4.0.536",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.536"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.536",
+    "@types/react": "19.0.0",
+    "typescript": "5.7.3"
+  }
+}

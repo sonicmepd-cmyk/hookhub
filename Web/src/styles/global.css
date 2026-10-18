@@ -1,0 +1,156 @@
+/* ============================================================
+   HookHub — Estilos globales
+   Reset mínimo, tipografía base, accesibilidad, utilidades.
+   ============================================================ */
+
+/* Reset y estilos de elementos en @layer base: las utilidades de Tailwind
+   (capa utilities) deben poder sobrescribirlos, p. ej. text-primary-foreground. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  * {
+    margin: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Evita que el header fijo tape el destino de las anclas */
+    scroll-padding-top: calc(var(--header-height) + 1rem);
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    color: var(--color-accent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+  }
+
+  button {
+    font: inherit;
+  }
+}
+
+/* Foco visible y consistente en todos los controles interactivos */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-text);
+  color: var(--color-bg);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--transition-fast);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Contenedor */
+.container {
+  width: min(100% - 2 * var(--space-5), var(--container));
+  margin-inline: auto;
+}
+
+@media (max-width: 40rem) {
+  .container {
+    width: min(100% - 2 * var(--space-4), var(--container));
+  }
+}
+
+/* Textura de puntos (fondo conceptual del hero) */
+.bg-dots {
+  background-image: radial-gradient(circle at 1px 1px, #e2e2e0 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* Movimiento reducido: respetar preferencia del sistema */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Accesibilidad: contenido visible solo para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------
+   Apariciones al hacer scroll (solo si JS activo y sin
+   prefers-reduced-motion; el script añade .js-reveal).
+   Si el JS falla, el contenido permanece visible (degradación).
+   ------------------------------------------------------------ */
+html.js-reveal [data-reveal] {
+  opacity: 0;
+  translate: 0 1rem;
+  transition:
+    opacity 520ms var(--ease-out),
+    translate 520ms var(--ease-out);
+  transition-delay: calc(var(--reveal-i, 0) * 70ms);
+}
+
+html.js-reveal [data-reveal].is-visible {
+  opacity: 1;
+  translate: 0 0;
+}

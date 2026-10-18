@@ -1,0 +1,46 @@
+/* Tailwind v4 + tokens shadcn del proyecto (paleta HookHub, sin degradados). */
+@import 'tailwindcss';
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --color-border: #e5e5e5;
+  --color-card: #f7f7f5;
+  --color-muted-foreground: #6a6a6a;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-ring: #2563eb;
+  --color-soft: #f7f7f5;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-muted: #f7f7f5;
+  --color-input: #e5e5e5;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #171717;
+  --color-accent: #f7f7f5;
+  --color-accent-foreground: #171717;
+  --color-secondary: #f7f7f5;
+  --color-secondary-foreground: #171717;
+
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-float: float 7s ease-in-out infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+}

@@ -1,0 +1,48 @@
+---
+interface Props {
+  /** Tamaño del mark en px */
+  size?: number;
+  /** Clase adicional */
+  class?: string;
+}
+const { size = 28, class: className } = Astro.props;
+---
+
+<span class:list={['logo', className]} aria-label="HookHub">
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <rect x="1.5" y="1.5" width="29" height="29" rx="8" stroke="currentColor" stroke-width="1.5"></rect>
+    <path
+      d="M10 8v10a6 6 0 0 0 12 0"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+    ></path>
+    <circle cx="22" cy="10" r="2.5" fill="currentColor"></circle>
+  </svg>
+  <span class="logo-text">HookHub</span>
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .logo-text {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+  }
+</style>

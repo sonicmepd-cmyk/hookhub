@@ -1,12 +1,38 @@
 import { createHash, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
-import { db, type UserRow } from './db';
+import { kv } from './store';
 
 export const SESSION_COOKIE = 'hh_session';
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+const SESSION_TTL_S = 30 * 24 * 60 * 60; // 30 días
 const CODE_TTL_MS = 15 * 60 * 1000; // 15 minutos
 const CODE_MAX_ATTEMPTS = 5;
 
 export type CodePurpose = 'register' | 'login';
+
+export interface UserRecord {
+  id: number;
+  username: string;
+  email: string;
+  password_hash: string;
+  otp_on_login: number;
+  verified: number;
+  created_at: string;
+}
+
+export interface PublicUser {
+  id: number;
+  username: string;
+  email: string;
+  otpOnLogin: boolean;
+}
+
+export function toPublicUser(user: UserRecord): PublicUser {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    otpOnLogin: user.otp_on_login === 1,
+  };
+}
 
 /* ── Contraseñas (scrypt, sin dependencias nativas) ─────────────────────── */
 
@@ -32,119 +58,200 @@ export function verifyPassword(password: string, stored: string): boolean {
   }
 }
 
-/** Hash constante para comparar códigos sin adivinar por tiempos. */
+/** Hash constante para comparar contraseñas sin adivinar por tiempos. */
 export function dummyPasswordCheck(): void {
   verifyPassword('dummy', hashPassword('dummy-password-for-timing'));
 }
 
-/* ── Sesiones ───────────────────────────────────────────────────────────── */
+/* ── Utilidades de claves KV ────────────────────────────────────────────── */
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
-export function createSession(userId: number): string {
+interface SessionRow {
+  user_id: number;
+  expires_at: string;
+}
+
+interface CodeRow {
+  hash: string;
+  attempts: number;
+  expires_at: string;
+}
+
+/* ── Usuarios ───────────────────────────────────────────────────────────── */
+
+export async function createUser(input: {
+  username: string;
+  email: string;
+  passwordHash: string;
+}): Promise<UserRecord> {
+  const store = await kv();
+  // id aleatorio: sin contador que pueda entrar en carrera entre funciones
+  let id = randomInt(1, 2 ** 42);
+  while (await store.get(`user:${id}`)) id = randomInt(1, 2 ** 42);
+  const user: UserRecord = {
+    id,
+    username: input.username,
+    email: input.email,
+    password_hash: input.passwordHash,
+    otp_on_login: 0,
+    verified: 0,
+    created_at: new Date().toISOString(),
+  };
+  await store.set(`user:${id}`, user);
+  await store.set(`email:${user.email}`, id);
+  await store.set(`username:${user.username}`, id);
+  return user;
+}
+
+export async function getUserById(id: number): Promise<UserRecord | undefined> {
+  const store = await kv();
+  return (await store.get<UserRecord>(`user:${id}`)) ?? undefined;
+}
+
+export async function getUserByEmail(email: string): Promise<UserRecord | undefined> {
+  const store = await kv();
+  const id = await store.get<number>(`email:${email}`);
+  if (id == null) return undefined;
+  return getUserById(id);
+}
+
+export async function getUserByUsername(username: string): Promise<UserRecord | undefined> {
+  const store = await kv();
+  const id = await store.get<number>(`username:${username}`);
+  if (id == null) return undefined;
+  return getUserById(id);
+}
+
+export async function getUserByIdentifier(identifier: string): Promise<UserRecord | undefined> {
+  return (await getUserByEmail(identifier)) ?? (await getUserByUsername(identifier));
+}
+
+export async function markUserVerified(id: number): Promise<void> {
+  const store = await kv();
+  const user = await getUserById(id);
+  if (!user) return;
+  await store.set(`user:${id}`, { ...user, verified: 1 });
+}
+
+export async function updateUserOtpOnLogin(id: number, on: boolean): Promise<void> {
+  const store = await kv();
+  const user = await getUserById(id);
+  if (!user) return;
+  await store.set(`user:${id}`, { ...user, otp_on_login: on ? 1 : 0 });
+}
+
+export async function deleteUser(id: number): Promise<void> {
+  const store = await kv();
+  const user = await getUserById(id);
+  if (!user) return;
+  await store.del(`user:${id}`);
+  await store.del(`email:${user.email}`);
+  await store.del(`username:${user.username}`);
+  await deleteUserSessions(id);
+  for (const purpose of ['register', 'login'] as const) {
+    await store.del(`code:${id}:${purpose}`);
+  }
+}
+
+/* ── Sesiones ───────────────────────────────────────────────────────────── */
+
+export async function createSession(userId: number): Promise<string> {
+  const store = await kv();
   const token = randomBytes(32).toString('base64url');
-  const expires = new Date(Date.now() + SESSION_TTL_MS).toISOString();
-  db.prepare(
-    'INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)',
-  ).run(sha256(token), userId, expires);
+  const hash = sha256(token);
+  const expiresAt = new Date(Date.now() + SESSION_TTL_S * 1000).toISOString();
+  await store.set(`session:${hash}`, { user_id: userId, expires_at: expiresAt });
+  await store.set(`usession:${userId}:${hash}`, 1);
   return token;
 }
 
-export function getUserBySessionToken(token: string): UserRow | undefined {
-  const row = db
-    .prepare(
-      `SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
-       WHERE s.token_hash = ? AND s.expires_at > datetime('now')`,
-    )
-    .get(sha256(token)) as UserRow | undefined;
-  return row;
+export async function getSessionUser(token: string): Promise<UserRecord | undefined> {
+  const store = await kv();
+  const hash = sha256(token);
+  const session = await store.get<SessionRow>(`session:${hash}`);
+  if (!session || Date.parse(session.expires_at) <= Date.now()) {
+    if (session) await store.del(`session:${hash}`);
+    return undefined;
+  }
+  return getUserById(session.user_id);
 }
 
-export function deleteSession(token: string): void {
-  db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha256(token));
+export async function deleteSession(token: string): Promise<void> {
+  const store = await kv();
+  const hash = sha256(token);
+  const session = await store.get<SessionRow>(`session:${hash}`);
+  if (!session) return;
+  await store.del(`session:${hash}`);
+  await store.del(`usession:${session.user_id}:${hash}`);
 }
 
-export function deleteUserSessions(userId: number): void {
-  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+export async function deleteUserSessions(userId: number): Promise<void> {
+  const store = await kv();
+  const keys = await store.list(`usession:${userId}:`);
+  for (const key of keys) {
+    const hash = key.slice(`usession:${userId}:`.length);
+    await store.del(`session:${hash}`);
+    await store.del(key);
+  }
 }
 
-export function sessionCookieOptions() {
-  return {
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    path: '/',
-    maxAge: SESSION_TTL_MS / 1000,
-    secure: false, // se ajusta en la ruta que lee el protocolo real
-  };
-}
+export { SESSION_TTL_S };
 
 /* ── Códigos de verificación ────────────────────────────────────────────── */
 
-export function createVerificationCode(userId: number, purpose: CodePurpose): string {
+export async function createVerificationCode(
+  userId: number,
+  purpose: CodePurpose,
+): Promise<string> {
+  const store = await kv();
   const code = String(randomInt(100000, 1000000));
-  db.prepare('DELETE FROM codes WHERE user_id = ? AND purpose = ?').run(userId, purpose);
-  const expires = new Date(Date.now() + CODE_TTL_MS).toISOString();
-  db.prepare(
-    'INSERT INTO codes (user_id, purpose, code_hash, expires_at) VALUES (?, ?, ?, ?)',
-  ).run(userId, purpose, sha256(code), expires);
+  const expiresAt = new Date(Date.now() + CODE_TTL_MS).toISOString();
+  await store.set(`code:${userId}:${purpose}`, { hash: sha256(code), attempts: 0, expires_at: expiresAt });
   return code;
 }
 
-export function verifyVerificationCode(
+export async function verifyVerificationCode(
   userId: number,
   purpose: CodePurpose,
   code: string,
-): { ok: true } | { ok: false; error: string } {
-  const row = db
-    .prepare(
-      'SELECT id, code_hash, attempts, expires_at FROM codes WHERE user_id = ? AND purpose = ? ORDER BY id DESC LIMIT 1',
-    )
-    .get(userId, purpose) as
-    | { id: number; code_hash: string; attempts: number; expires_at: string }
-    | undefined;
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const store = await kv();
+  const key = `code:${userId}:${purpose}`;
+  const row = await store.get<CodeRow>(key);
 
   if (!row || Date.parse(row.expires_at) <= Date.now()) {
-    db.prepare('DELETE FROM codes WHERE user_id = ? AND purpose = ?').run(userId, purpose);
+    await store.del(key);
     return { ok: false, error: 'El código ha caducado. Solicita uno nuevo.' };
   }
   if (row.attempts >= CODE_MAX_ATTEMPTS) {
-    db.prepare('DELETE FROM codes WHERE id = ?').run(row.id);
+    await store.del(key);
     return { ok: false, error: 'Demasiados intentos. Solicita un código nuevo.' };
   }
-  db.prepare('UPDATE codes SET attempts = attempts + 1 WHERE id = ?').run(row.id);
-  if (sha256(code) !== row.code_hash) {
+  await store.set(key, { ...row, attempts: row.attempts + 1 });
+  if (sha256(code) !== row.hash) {
     return { ok: false, error: 'El código no es correcto.' };
   }
-  db.prepare('DELETE FROM codes WHERE id = ?').run(row.id);
+  await store.del(key);
   return { ok: true };
 }
 
 /* ── Límites por clave (IP o identificador) ─────────────────────────────── */
 
-export function rateLimit(key: string, limit: number, windowMs: number): boolean {
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const store = await kv();
+  const storeKey = `rl:${key}`;
   const now = Date.now();
-  const row = db.prepare('SELECT hits FROM rate_limits WHERE key = ?').get(key) as
-    | { hits: string }
-    | undefined;
-  let hits: number[] = [];
-  try {
-    hits = row ? (JSON.parse(row.hits) as number[]) : [];
-  } catch {
-    hits = [];
-  }
+  let hits: number[] = (await store.get<number[]>(storeKey)) ?? [];
   hits = hits.filter((t) => Number.isFinite(t) && now - t < windowMs);
   if (hits.length >= limit) {
-    db.prepare(
-      'INSERT INTO rate_limits (key, hits) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET hits = excluded.hits',
-    ).run(key, JSON.stringify(hits));
+    await store.set(storeKey, hits);
     return false;
   }
   hits.push(now);
-  db.prepare(
-    'INSERT INTO rate_limits (key, hits) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET hits = excluded.hits',
-  ).run(key, JSON.stringify(hits));
+  await store.set(storeKey, hits);
   return true;
 }
 

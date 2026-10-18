@@ -1,0 +1,10 @@
+# Configuración de despliegue en Netlify.
+# El sitio se crea desde el repositorio con base directory "Web".
+[build]
+  base = "Web"
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"

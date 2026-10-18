@@ -1,15 +1,32 @@
-import type { APIContext } from 'astro';
 import {
   SESSION_COOKIE,
-  getUserBySessionToken,
+  SESSION_TTL_S,
+  getSessionUser,
   rateLimit,
+  toPublicUser,
+  type PublicUser,
+  type UserRecord,
 } from './auth';
-import { toPublicUser, type PublicUser, type UserRow } from './db';
 
-export function json(data: unknown, status = 200): Response {
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+};
+
+export function json(
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8' },
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      ...SECURITY_HEADERS,
+      ...extraHeaders,
+    },
   });
 }
 
@@ -58,32 +75,72 @@ export function sameOriginOk(request: Request): boolean {
   return false;
 }
 
-export function clientKey(context: APIContext, bucket: string): string {
-  const fwd = context.request.headers.get('x-forwarded-for');
+export function clientKey(request: Request, bucket: string): string {
+  const fwd = request.headers.get('x-forwarded-for');
   const ip = fwd ? fwd.split(',')[0]?.trim() : 'local';
   return `${bucket}:${ip || 'local'}`;
 }
 
-export function getSessionUser(context: APIContext): UserRow | undefined {
-  const token = context.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return undefined;
-  return getUserBySessionToken(token);
+export function isHttps(request: Request): boolean {
+  try {
+    return new URL(request.url).protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
-export function sessionUserResponse(context: APIContext): PublicUser | null {
-  const user = getSessionUser(context);
+/* ── Cookies (sin API de framework: se manejan a mano) ──────────────────── */
+
+export function getCookieValue(request: Request, name: string): string | undefined {
+  const header = request.headers.get('cookie');
+  if (!header) return undefined;
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    const key = part.slice(0, eq).trim();
+    if (key === name) return decodeURIComponent(part.slice(eq + 1).trim());
+  }
+  return undefined;
+}
+
+export function sessionSetCookie(token: string, secure: boolean): string {
+  const attrs = [
+    `${SESSION_COOKIE}=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${SESSION_TTL_S}`,
+  ];
+  if (secure) attrs.push('Secure');
+  return attrs.join('; ');
+}
+
+export function clearSessionCookie(): string {
+  return [`${SESSION_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0'].join('; ');
+}
+
+/* ── Sesión y límites ───────────────────────────────────────────────────── */
+
+export async function sessionUserFromRequest(request: Request): Promise<UserRecord | undefined> {
+  const token = getCookieValue(request, SESSION_COOKIE);
+  if (!token) return undefined;
+  return getSessionUser(token);
+}
+
+export async function sessionUserResponse(request: Request): Promise<PublicUser | null> {
+  const user = await sessionUserFromRequest(request);
   return user ? toPublicUser(user) : null;
 }
 
 /** Límite compartido para endpoints que mutan estado. */
-export function limitOrError(
-  context: APIContext,
+export async function limitOrError(
+  request: Request,
   bucket: string,
   limit: number,
   windowMs: number,
   message = 'Demasiados intentos. Inténtalo de nuevo más tarde.',
-): Response | null {
-  if (!rateLimit(clientKey(context, bucket), limit, windowMs)) {
+): Promise<Response | null> {
+  if (!(await rateLimit(clientKey(request, bucket), limit, windowMs))) {
     return json({ ok: false, error: message }, 429);
   }
   return null;

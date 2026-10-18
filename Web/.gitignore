@@ -4,6 +4,7 @@ node_modules/
 # Compilación
 dist/
 .astro/
+.netlify/
 
 # Base de datos de cuentas
 data/

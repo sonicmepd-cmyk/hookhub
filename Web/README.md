@@ -1,6 +1,6 @@
 # HookHub — Web oficial
 
-Sitio público de presentación y descarga de HookHub. Las páginas son **estáticas** (pre-renderizadas) y se sirven con un servidor Node que además expone la **API de cuentas** (`/api/auth/*`): registro con nombre de usuario y código de verificación por correo, inicio de sesión (con opción de código en cada acceso), ajustes de cuenta y eliminación de cuenta. No incluye la aplicación ni las funciones internas de HookHub AI.
+Sitio público de presentación y descarga de HookHub. Las páginas son **estáticas** (pre-renderizadas) y se publican en **Netlify**, que además ejecuta la **API de cuentas** (`/api/auth/*`) como Netlify Function: registro con nombre de usuario y código de verificación por correo, inicio de sesión (con opción de código en cada acceso), ajustes de cuenta y eliminación de cuenta. No incluye la aplicación ni las funciones internas de HookHub AI.
 
 ## Requisitos
 
@@ -12,23 +12,23 @@ Sitio público de presentación y descarga de HookHub. Las páginas son **estát
 ```bash
 cd Web
 npm install
-npm run dev        # servidor de desarrollo con API (http://localhost:4321)
+npm run dev        # netlify dev: web + API en http://localhost:8888
 ```
+
+`npm run dev` usa Netlify CLI: sirve las páginas de Astro y enruta `/api/*` a la function real (`netlify/functions/api.ts`), con almacenamiento local tipo Blobs.
 
 ## Verificación y compilación
 
 ```bash
 npx tsc --noEmit   # comprobación de tipos
-npm run build      # compilación a dist/ (páginas en dist/client, servidor en dist/server)
-npm start          # sirve dist/ + API con el servidor Node (por defecto en el puerto 4321)
-npm run preview    # alternativa de revisión del adaptador Node
+npm run build      # compilación estática a dist/
+npm run preview    # netlify dev otra vez (revisar dist/ + API)
 ```
 
-Variables opcionales en `.env` (hay una plantilla en `.env.example`):
+Variables opcionales en `.env` (hay una plantilla en `.env.example`; en Netlify se configuran en *Site settings → Environment variables*):
 
 - `MAIL_MODE=console` (por defecto): los códigos de verificación se imprimen en la consola del servidor.
-- `MAIL_MODE=smtp` con `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` y `MAIL_FROM`: correos reales vía nodemailer.
-- `DB_PATH`: ruta del archivo SQLite (por defecto `Web/data/hookhub.sqlite`).
+- `MAIL_MODE=smtp` con `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS` y `MAIL_FROM`: correos reales vía nodemailer. Con Resend: `smtp.resend.com`, puerto `465`, `SMTP_SECURE=true`, usuario `resend` y contraseña = la API key.
 
 ## Cuentas y autenticación
 
@@ -40,7 +40,7 @@ Flujos reales (nada de éxitos simulados):
 4. La navbar muestra el icono de ajustes con `@usuario` cuando hay sesión; sin sesión muestra «Iniciar sesión».
 5. «Continuar con Google» sigue deshabilitado a propósito: no hay OAuth configurado.
 
-Medidas de seguridad incluidas: contraseñas con scrypt, sesiones en cookie httpOnly (30 días), códigos guardados solo como hash, límite de intentos por IP e identificador, comprobación de origen (CSRF) y cabeceras de seguridad. La base de datos (`data/`) está fuera de git.
+Medidas de seguridad incluidas: contraseñas con scrypt, sesiones en cookie httpOnly (30 días), códigos guardados solo como hash, límite de intentos por IP e identificador, comprobación de origen (CSRF) y cabeceras de seguridad. Los datos viven en Netlify Blobs (producción) o en ficheros locales `data/kv/` (depuración); ambos están fuera de git.
 
 ## Cómo configurar enlaces, descargas y novedades
 
@@ -102,16 +102,27 @@ Con el array vacío (estado actual) la sección muestra un estado vacío honesto
 
 ## Cabeceras de seguridad y despliegue
 
-El servidor Node aplica las cabeceras de seguridad por middleware (`src/middleware.ts`), incluida la CSP en producción. El archivo `public/_headers` las duplica para proveedores estáticos que lo apliquen (Netlify, Cloudflare Pages).
+Las páginas estáticas reciben las cabeceras de seguridad desde `public/_headers` (Netlify las aplica), incluida la CSP en producción. Las respuestas de la API añaden las mismas cabeceras base desde `src/lib/api.ts`.
 
-- **GitHub Pages no aplica `_headers` ni ejecuta el servidor**: la web perdería la API de cuentas si se despliega ahí. Para desplegar con cuentas hace falta un host que ejecute Node (un VPS, Render, Railway, etc.).
-- Tras desplegar, verifica las cabeceras con: `curl -I https://tu-dominio/`.
+Despliegue en Netlify (donde ya está la web):
 
-La CSP está diseñada para la salida real de este proyecto (CSS y JS externos, fuentes e imágenes locales, sin recursos de terceros). Si añades scripts o estilos externos, deberás ampliar la CSP en `src/middleware.ts` y `_headers`.
+1. Sube este repositorio a GitHub.
+2. En Netlify: *Add new site → Import an existing project*, elige el repo y revisa la configuración (sale automática desde `netlify.toml` en la raíz: base `Web`, build `npm run build`, publish `dist`, functions `netlify/functions`).
+3. Configura las variables de entorno del correo (`MAIL_MODE=smtp`, `SMTP_*`, `MAIL_FROM`) en *Site settings → Environment variables*.
+4. Tras cada push a la rama principal, Netlify redespliega solo.
+
+Tras desplegar, verifica con:
+
+```bash
+curl -I https://tu-dominio/            # cabeceras en la página
+curl https://tu-dominio/api/auth/me    # {"ok":true,"user":null,...}
+```
+
+La CSP está diseñada para la salida real de este proyecto (CSS y JS externos, fuentes e imágenes locales, sin recursos de terceros). Si añades scripts o estilos externos, deberás ampliar la CSP en `public/_headers`.
 
 ## Privacidad
 
-Sin analítica ni telemetría de terceros. Con cuentas sí hay: una cookie de sesión (`hh_session`, httpOnly, 30 días) y un archivo local SQLite (`data/hookhub.sqlite`) con usuario, correo, hash de contraseña y sesiones. No se envían datos a terceros salvo el correo transaccional de verificación cuando `MAIL_MODE=smtp`. La telemetría anónima de Astro se desactiva en desarrollo (`npx astro telemetry disable`).
+Sin analítica ni telemetría de terceros. Con cuentas sí hay: una cookie de sesión (`hh_session`, httpOnly, 30 días) y un almacén de datos de cuentas (Netlify Blobs en producción: usuario, correo, hash de contraseña y sesiones). No se envían datos a terceros salvo el correo transaccional de verificación cuando `MAIL_MODE=smtp`. La telemetría anónima de Astro se desactiva en desarrollo (`npx astro telemetry disable`).
 
 ## Componentes React (shadcn / Tailwind)
 
@@ -133,13 +144,13 @@ Componentes del sitio:
 - `not-found-02.tsx` — página 404 (adaptación de un diseño de 21st.dev): número gigante, lista de destinos reales de esta web (sin `href="#"`) y botones con la primitiva `button` de shadcn. Se renderiza estático desde `404.astro`.
 - `hero-3.tsx` — sección de cierre con marquesina (estilo shadcn) con framer-motion. Las imágenes de la marquesina son **placeholders abstractos locales** en `public/showcase/` (sin CDNs externos; la CSP `img-src 'self'` se mantiene intacta). Sustitúyelas por capturas reales cuando existan, actualizando el array `showcaseImages` en `src/pages/index.astro`.
 
-Backend de cuentas (TypeScript, adaptador Node):
+Backend de cuentas (TypeScript, Netlify Functions):
 
-- `src/lib/db.ts` — SQLite (`node:sqlite`) con tablas `users`, `sessions`, `codes` y `rate_limits`.
-- `src/lib/auth.ts` — scrypt, sesiones, códigos OTP, límites de intentos y validaciones.
+- `netlify/functions/api.ts` — única function con enrutador `/api/auth/*`: `register`, `register/verify`, `resend`, `login`, `login/verify`, `logout`, `me`, `settings` y `account`.
+- `src/lib/store.ts` — almacén clave-valor: Netlify Blobs en Netlify, ficheros locales en depuración.
+- `src/lib/auth.ts` — scrypt, sesiones, códigos OTP, límites de intentos y validaciones (sobre el almacén KV).
 - `src/lib/mail.ts` — envío de códigos por consola o SMTP.
 - `src/lib/api.ts` — utilidades comunes de la API (JSON, cookies de sesión, origen, límites).
-- `src/pages/api/auth/*` — `register`, `register/verify`, `resend`, `login`, `login/verify`, `logout`, `me`, `settings` y `account`.
 
 Páginas: `/` (portada), `/login` (acceso y registro reales) y `/cuenta` (ajustes de la cuenta).
 
@@ -151,6 +162,7 @@ Notas importantes:
 ## Estructura
 
 ```
+netlify/functions/    api.ts — API de cuentas (enrutador /api/auth/*)
 src/
 ├── components/       Downloads, News, Community, Footer, StatusBadge, Logo
 │   └── ui/           navbar-02 (+ navbar-02-utils/), hero-01 (+ hero-01-utils/),
@@ -158,16 +170,14 @@ src/
 │                     not-found-02, hero-3 (React) + primitivas shadcn:
 │                     button, input, label, sheet, navigation-menu
 ├── config/           site.ts  ← único punto de configuración del contenido
-├── lib/              utils.ts (cn) + db.ts, auth.ts, mail.ts, api.ts (cuentas)
+├── lib/              utils.ts (cn) + store.ts, auth.ts, mail.ts, api.ts (cuentas)
 ├── layouts/          BaseLayout.astro (SEO, fuentes, skip-link)
 ├── pages/            index.astro, login.astro, cuenta.astro, 404.astro
-│   └── api/auth/     register, register/verify, resend, login, login/verify,
-│                     logout, me, settings, account
-├── middleware.ts     cabeceras de seguridad (CSP en producción)
 └── styles/           tokens.css, global.css, tailwind.css (tokens Tailwind @theme)
-data/                 hookhub.sqlite (BD de cuentas; ignorada por git)
+data/                 kv/ (almacén local de cuentas en depuración; ignorada por git)
 public/               favicon.svg, og-cover.png, _headers,
                       showcase/ (marquesina + avatares/marcas del hero, SVG locales)
+netlify.toml          (en la raíz del repo) build/publish/functions para Netlify
 ```
 
 ## Licencia del código

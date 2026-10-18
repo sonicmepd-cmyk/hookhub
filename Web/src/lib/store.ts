@@ -4,6 +4,10 @@
  * - Fuera de Netlify (depuración con node a pelo): ficheros en data/kv/.
  */
 
+import { mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { getStore } from '@netlify/blobs';
+
 export interface KV {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T): Promise<void>;
@@ -12,9 +16,6 @@ export interface KV {
 }
 
 /* ── Backend local: un fichero por clave ────────────────────────────────── */
-
-import { mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 
 class FileKV implements KV {
   private dir: string;
@@ -99,21 +100,21 @@ class BlobsKV implements KV {
 
 /* ── Selección del backend ──────────────────────────────────────────────── */
 
-async function createBackend(): Promise<KV> {
-  if (process.env.NETLIFY || process.env.NETLIFY_DEV) {
-    try {
-      const { getStore } = await import('@netlify/blobs');
-      return new BlobsKV(getStore('hookhub-auth') as unknown as BlobsStore);
-    } catch (error) {
-      console.warn('[store] Netlify Blobs no disponible, uso almacenamiento local:', error);
+function createBackend(): KV {
+  try {
+    const store = getStore('hookhub-auth') as unknown as BlobsStore;
+    if (store && typeof store.get === 'function') {
+      return new BlobsKV(store);
     }
+  } catch {
+    // Fuera de Netlify (depuración local): cae al backend de ficheros
   }
   const dir = process.env.KV_DIR ?? join(process.cwd(), 'data', 'kv');
   return new FileKV(dir);
 }
 
-export const kvPromise = createBackend();
+const backend: KV = createBackend();
 
 export async function kv(): Promise<KV> {
-  return kvPromise;
+  return backend;
 }
